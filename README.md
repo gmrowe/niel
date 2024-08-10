@@ -1,7 +1,7 @@
 # neil
 
-neil is a clojure script powered by babashka that initializes a Clojure project structure with defaults
-that I like to use
+`neil` is a clojure script powered by babashka that initializes a Clojure project structure with
+defaults that I like to use.
 
 ## Requirements
 
@@ -18,7 +18,8 @@ that I like to use
 
 ## Related Projects
 
-This is a toy project with my preferred defaults. If you are looking for a project that is more configurable or professional grade.
+This is a toy project with my preferred defaults. If you are looking for a project that is more
+configurable or professional grade, one of these projects may be a better bet
 
 - [deps-new](https://github.com/seancorfield/deps-new) - Library from Sean Corfield
 - [leiningen](https://leiningen.org/) - Neil takes a lot of inspiration (including in name) from lein
