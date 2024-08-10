@@ -197,8 +197,7 @@
   ;; Create .dir-locals.el file (for emacs)
   (fs/write-lines (fs/path @namespc ".dir-locals.el") dir-locals-txt))
 
-(when (= *file* (System/getProperty "babashka.file"))
-  (apply run *command-line-args*))
+(when (= *file* (System/getProperty "babashka.file")) (run *command-line-args*))
 
 (comment
   (run ["dummy-project"])
