@@ -48,13 +48,6 @@
    "[UNLICENSE](LICENSE) © [gmrowe](https://github.com/gmrowe)."
    ""])
 
-(let [old @namespc]
-  (reset! namespc "neil")
-  (let [output (with-out-str (doseq [line (readme-text)] (println line)))]
-    (spit "README.md" output)
-    (reset! namespc old)))
-
-
 (defn main-txt
   []
   [(format "(ns %s.main)" @namespc)
