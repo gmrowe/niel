@@ -1,0 +1,191 @@
+#!/usr/bin/env bb
+;; TODO: use (moustache)[https://github.com/fhd/clostache] for templating
+
+
+(require '[babashka.fs :as fs] '[clojure.string :as str])
+
+(def namespc (atom ""))
+(def root-path (atom ""))
+
+(defn readme-text
+  []
+  ;; Taken from: https://github.com/rodrigobdz/minimal-readme
+  [(format "# %s" @namespc)
+   ""
+   "Describe briefly what makes your project stand out."
+   ""
+   "## Requirements"
+   ""
+   "- List of required tools for this project."
+   ""
+   "## Installation"
+   ""
+   "1. Steps to install your project."
+   "1. Include commands if possible."
+   ""
+   "   ```sh"
+   "   echo \"Hello World\""
+   "   ```"
+   ""
+   "## Usage"
+   ""
+   "- `incognito` - Open an incognito window with [Google](https://www.google.com/)."
+   ""
+   "## Related Projects"
+   ""
+   "Explain which projects with similar functionality already exist and in which cases your project is a better solution."
+   ""
+   "- [Documenting your projects on GitHub](https://guides.github.com/features/wikis/#Formatting-a-readme) - Blog post from GitHub explaining the importance of good documentation."
+   "- [jehna/readme-best-practices](https://github.com/jehna/readme-best-practices): README best practices with additional _Contributing_ and _Features_ sections."
+   "- [PurpleBooth/README-Template.md](https://gist.github.com/PurpleBooth/109311bb0361f32d87a2): Verbose README template."
+   ""
+   "## Credits"
+   ""
+   "Thank those who helped make this possible."
+   ""
+   "## License"
+   ""
+   "[UNLICENSE](LICENSE) © [gmrowe](https://github.com/gmrowe)."
+   ""])
+
+(let [old @namespc]
+  (reset! namespc "neil")
+  (let [output (with-out-str (doseq [line (readme-text)] (println line)))]
+    (spit "README.md" output)
+    (reset! namespc old)))
+
+
+(defn main-txt
+  []
+  [(format "(ns %s.main)" @namespc)
+   ""
+   "(defn -main"
+   "  [& args]"
+   "  (println \"Hello World!\"))"])
+
+(defn test-txt
+  []
+  [(format "(ns %s.main-test" @namespc)
+   " (:require [clojure.test :refer [deftest is testing]]"
+   (format "           [%s.main :as m]))" @namespc)
+   ""
+   "(deftest fail-me"
+   "  (testing \"This test should fail\""
+   "    (is (= 2 3))))"
+   ""
+   "(deftest pass-me"
+   "  (testing \"This test should pass\""
+   "    (is (= 1 1))))"])
+
+(def deps-txt
+  ["{:aliases"
+   " {:dev {:extra-deps {lambdaisland/kaocha {:mvn/version \"1.91.1392\"}"
+   "                     org.clojure/tools.namespace {:mvn/version \"1.5.0\"}}"
+   "        :extra-paths [\"test\" \"dev\"]}"
+   "  :test {:extra-deps {lambdaisland/kaocha {:mvn/version \"1.91.1392\"}}"
+   "         :extra-paths [\"test\"]"
+   "         :main-opts [\"-m\" \"kaocha.runner\"]}"
+   "  :cider-nrepl {:extra-deps {cider/cider-nrepl {:mvn/version \"0.49.0\"}"
+   "                             nrepl/nrepl {:mvn/version \"1.2.0\"}"
+   "                             org.clojure/tools.namespace {:mvn/version \"1.5.0\"}}"
+   "                :main-opts [\"-m\" \"nrepl.cmdline\" \"--middleware\" \"[cider.nrepl/cider-middleware]\"]}"
+   "  :nrepl {:extra-deps {nrepl/nrepl {:mvn/version \"1.2.0\"}} :main-opts [\"-m\" \"nrepl.cmdline\"]}}"
+   " :paths [\"src\"]}"])
+
+(def test-runner-txt
+  ["#!/usr/bin/env bash"
+   ""
+   "clojure -M:test \"$@\""])
+
+(def zprint-rules-txt
+  ["{:comment {:inline-align-style :none}"
+   " :fn-map"
+   " {\"def\" [:arg1-body {:vector {:wrap-coll? false}}]"
+   "  \"defn\" [:arg1-body"
+   "          {:next-inner {:map"
+   "                        {:force-nl? true :key-order [:pre :post] :sort-in-code? false :sort? true}"
+   "                        :next-inner {:map {:force-nl? false}}}}]"
+   "  \"cond->\" [:arg1-pair-body {:pair {:indent 0 :nl-separator? true}}]"
+   "  \"cond\" [:pair-fn {:pair {:indent 0 :nl-separator? true} :pair-fn {:hang? false}}]"
+   "  \"try\" :flow-body"
+   "  \"as->\" [:arg2 {:fn-force-nl #{:arg2} :next-inner {:remove {:fn-force-nl #{:arg2}}}}]"
+   "  \"deftest\" :arg1-body"
+   "  \"testing\" [:arg1-body {:list {:respect-nl? true}}]"
+   "  \"extend\" :arg1-extend"
+   "  \"comment\" [:flow-body {:list {:respect-nl? true}}]"
+   "  \"extend-type\" [:arg1-extend"
+   "                 {:extend {:indent 0} :fn-map {:default :force-nl-body} :list {:indent-arg 2}}]"
+   "  \"defrecord\" [:arg2-extend {:list {:indent-arg 2} :next-inner {:list {:indent-arg 1}}}]"
+   "  \"defprotocol\" [:arg1-force-nl"
+   "                 {:fn-map {:default :flow}"
+   "                  :list {:constant-pair? false :indent-arg 2}"
+   "                  :next-inner {:list {:indent-arg 1}}"
+   "                  :style :defprotocolguide}]"
+   "  \"with-meta\" :flow-body}"
+   " :map {:comma? false :sort? false :force-nl true}"
+   " :vector {:respect-nl? true}"
+   " :style [:community :binding-nl]"
+   " :width 80}"])
+
+(def test-edn-txt ["#kaocha/v1 {}"])
+
+(def user-txt
+  ["(ns user"
+   "  (:require [clojure.tools.namespace.repl :refer [refresh]]"
+   "            [kaocha.repl :as k]))"
+   ""
+   "(defn test-all"
+   "  []"
+   "  (refresh)"
+   "  (k/run :unit))"])
+
+(def dir-locals-txt
+  ["((clojure-mode . ((cider-clojure-cli-aliases . \":dev\"))))"])
+
+(defn run
+  [args]
+  ;; Init atoms
+  (reset! namespc (first args))
+  (reset! root-path (str/replace @namespc "-" "_"))
+  (printf "Creating project: %s" @namespc)
+  ;; Init `src/` directory
+  (fs/create-dirs (fs/path @namespc "src" @root-path))
+  (fs/write-lines (fs/path @namespc "src" @root-path "main.clj") (main-txt))
+  ;; Init `test/` directory
+  (fs/create-dirs (fs/path @namespc "test" @root-path))
+  (fs/write-lines (fs/path @namespc "test" @root-path "main_test.clj")
+                  (test-txt))
+  ;; Init `dev/` directory
+  (fs/create-dirs (fs/path @namespc "dev"))
+  (fs/write-lines (fs/path @namespc "dev" "user.clj") user-txt)
+  ;; Init `scripts/` directory with test runner script
+  (fs/create-dirs (fs/path @namespc "scripts"))
+  (fs/write-lines (fs/path @namespc "scripts" "test") test-runner-txt)
+  (fs/set-posix-file-permissions (fs/path @namespc "scripts" "test")
+                                 "rwxr-xr-x")
+  ;; Init `resources/` directory (empty)
+  (fs/create-dirs (fs/path @namespc "resources"))
+  ;; Create deps.edn file
+  (fs/write-lines (fs/path @namespc "deps.edn") deps-txt)
+  ;; Create README file
+  (fs/write-lines (fs/path @namespc "README.md") (readme-text))
+  ;; Create tests.edn file
+  (fs/write-lines (fs/path @namespc "tests.edn") test-edn-txt)
+  ;; Create .zprint.edn file
+  (fs/write-lines (fs/path @namespc ".zprint.edn") zprint-rules-txt)
+  ;; Create .gitignore file (empty)
+  (fs/create-file (fs/path @namespc ".gitignore"))
+  ;; Create .dir-locals.el file (for emacs)
+  (fs/write-lines (fs/path @namespc ".dir-locals.el") dir-locals-txt))
+
+(when (= *file* (System/getProperty "babashka.file"))
+  (apply run *command-line-args*))
+
+(comment
+  (run ["dummy-project"])
+)
+
+(comment
+  "**Clean**"
+  (fs/delete-tree @namespc)
+)
