@@ -5,159 +5,90 @@
          '[clojure.string :as str]
          '[selmer.parser :as parser])
 
-(def namespc (atom ""))
-(def root-path (atom ""))
 (def user-name "Garrett M Rowe")
 (def user-email "garrett.m.rowe@gmail.com")
 (def current-year (.getValue (java.time.Year/now)))
 
-(def config
+(defn gen-config
+  [args]
   {:year (.getValue (java.time.Year/now))
    :user-name "Garrett M Rowe"
-   :user-email "garrett.m.rowez@gmail.com"})
+   :user-email "garrett.m.rowez@gmail.com"
+   :template-dir ["resources"]
+   :namespace (first args)
+   :root-path (str/replace (first args) \- \_)})
 
-(defn readme-text
-  []
-  ;; Taken from: https://github.com/rodrigobdz/minimal-readme
-  [(format "# %s" @namespc)
-   ""
-   "Describe briefly what makes your project stand out."
-   ""
-   "## Requirements"
-   ""
-   "- List of required tools for this project."
-   ""
-   "## Installation"
-   ""
-   "1. Steps to install your project."
-   "1. Include commands if possible."
-   ""
-   "   ```sh"
-   "   echo \"Hello World\""
-   "   ```"
-   ""
-   "## Usage"
-   ""
-   "- `incognito` - Open an incognito window with [Google](https://www.google.com/)."
-   ""
-   "## Related Projects"
-   ""
-   "Explain which projects with similar functionality already exist and in which cases your project is a better solution."
-   ""
-   "- [Documenting your projects on GitHub](https://guides.github.com/features/wikis/#Formatting-a-readme) - Blog post from GitHub explaining the importance of good documentation."
-   "- [jehna/readme-best-practices](https://github.com/jehna/readme-best-practices): README best practices with additional _Contributing_ and _Features_ sections."
-   "- [PurpleBooth/README-Template.md](https://gist.github.com/PurpleBooth/109311bb0361f32d87a2): Verbose README template."
-   ""
-   "## Credits"
-   ""
-   "Thank those who helped make this possible."
-   ""
-   "## License"
-   ""
-   "[MIT](LICENSE) © [gmrowe](https://github.com/gmrowe)."
-   ""])
-
-(defn main-txt
-  []
-  [(format "(ns %s.main)" @namespc)
-   ""
-   "(defn -main"
-   "  [& args]"
-   "  (println \"Hello World!\"))"])
-
-(defn test-txt
-  []
-  [(format "(ns %s.main-test" @namespc)
-   " (:require [clojure.test :refer [deftest is testing]]"
-   (format "           [%s.main :as m]))" @namespc)
-   ""
-   "(deftest fail-me"
-   "  (testing \"This test should fail\""
-   "    (is (= 2 3))))"
-   ""
-   "(deftest pass-me"
-   "  (testing \"This test should pass\""
-   "    (is (= 1 1))))"])
-
-(def deps-txt
-  ["{:aliases"
-   " {:dev {:extra-deps {lambdaisland/kaocha {:mvn/version \"1.91.1392\"}"
-   "                     org.clojure/tools.namespace {:mvn/version \"1.5.0\"}}"
-   "        :extra-paths [\"test\" \"dev\"]}"
-   "  :test {:extra-deps {lambdaisland/kaocha {:mvn/version \"1.91.1392\"}}"
-   "         :extra-paths [\"test\"]"
-   "         :main-opts [\"-m\" \"kaocha.runner\"]}"
-   "  :cider-nrepl {:extra-deps {cider/cider-nrepl {:mvn/version \"0.49.0\"}"
-   "                             nrepl/nrepl {:mvn/version \"1.2.0\"}"
-   "                             org.clojure/tools.namespace {:mvn/version \"1.5.0\"}}"
-   "                :main-opts [\"-m\" \"nrepl.cmdline\" \"--middleware\" \"[cider.nrepl/cider-middleware]\"]}"
-   "  :nrepl {:extra-deps {nrepl/nrepl {:mvn/version \"1.2.0\"}} :main-opts [\"-m\" \"nrepl.cmdline\"]}}"
-   " :paths [\"src\"]}"])
-
-(def test-runner-txt
-  ["#!/usr/bin/env bash"
-   ""
-   "clojure -M:test \"$@\""])
-
-(def test-edn-txt ["#kaocha/v1 {}"])
-
-(def user-txt
-  ["(ns user"
-   "  (:require [clojure.tools.namespace.repl :refer [refresh]]"
-   "            [kaocha.repl :as k]))"
-   ""
-   "(defn test-all"
-   "  []"
-   "  (refresh)"
-   "  (k/run :unit))"])
-
-(def dir-locals-txt
-  ["((clojure-mode . ((cider-clojure-cli-aliases . \":dev\"))))"])
+(defn render
+  [template-path output-path config]
+  (fs/write-lines output-path
+                  (-> template-path
+                      str
+                      (parser/render-file config)
+                      str/split-lines)))
 
 (defn run
   [args]
-  ;; Init atoms
-  (reset! namespc (first args))
-  (reset! root-path (str/replace @namespc "-" "_"))
-  (printf "Creating project: %s" @namespc)
-  ;; Init `src/` directory
-  (fs/create-dirs (fs/path @namespc "src" @root-path))
-  (fs/write-lines (fs/path @namespc "src" @root-path "main.clj") (main-txt))
-  ;; Init `test/` directory
-  (fs/create-dirs (fs/path @namespc "test" @root-path))
-  (fs/write-lines (fs/path @namespc "test" @root-path "main_test.clj")
-                  (test-txt))
-  ;; Init `dev/` directory
-  (fs/create-dirs (fs/path @namespc "dev"))
-  (fs/write-lines (fs/path @namespc "dev" "user.clj") user-txt)
-  ;; Init `scripts/` directory with test runner script
-  (fs/create-dirs (fs/path @namespc "scripts"))
-  (fs/write-lines (fs/path @namespc "scripts" "test") test-runner-txt)
-  (fs/set-posix-file-permissions (fs/path @namespc "scripts" "test")
-                                 "rwxr-xr-x")
-  ;; Init `resources/` directory (empty)
-  (fs/create-dirs (fs/path @namespc "resources"))
-  ;; Create deps.edn file
-  (fs/write-lines (fs/path @namespc "deps.edn") deps-txt)
-  ;; Create README file
-  (fs/write-lines (fs/path @namespc "README.md") (readme-text))
-  ;; Create LICENSE file
-  (fs/write-lines (fs/path @namespc "LICENSE")
-                  (str/split-lines (parser/render-file "LICENSE" config)))
-  ;; Create tests.edn file
-  (fs/write-lines (fs/path @namespc "tests.edn") test-edn-txt)
-  ;; Create .zprint.edn file
-  (fs/write-lines (fs/path @namespc ".zprint.edn")
-                  (str/split-lines (parser/render-file "zprint.edn" config)))
-  ;; Create .gitignore file (empty)
-  (fs/create-file (fs/path @namespc ".gitignore"))
-  ;; Create .dir-locals.el file (for emacs)
-  (fs/write-lines (fs/path @namespc ".dir-locals.el") dir-locals-txt))
+  (let [{:keys [namespace root-path] :as config} (gen-config args)]
+    (printf "Creating project: %s" namespace)
+    ;; Init `src/` directory
+    (fs/create-dirs (fs/path namespace "src" root-path))
+    ;; Render main.clj
+    (render (fs/path "resources" "main.clj")
+            (fs/path namespace "src" (:root-path config) "main.clj")
+            config)
+    ;; Init `test/` directory
+    (fs/create-dirs (fs/path namespace "test" (:root-path config)))
+    (render (fs/path "resources" "main_test.clj")
+            (fs/path namespace "test" (:root-path config) "main_test.clj")
+            config)
+    ;; Init `dev/` directory
+    (fs/create-dirs (fs/path namespace "dev"))
+    (render (fs/path "resources" "user.clj")
+            (fs/path namespace "dev" "user.clj")
+            config)
+    ;; Init `scripts/` directory with test runner script
+    (fs/create-dirs (fs/path namespace "scripts"))
+    (render (fs/path "resources" "test")
+            (fs/path namespace "scripts" "test")
+            config)
+    ;; Make script executable
+    (fs/set-posix-file-permissions (fs/path namespace "scripts" "test")
+                                   "rwxr-xr-x")
+    ;; Init `resources/` directory (empty)
+    (fs/create-dirs (fs/path namespace "resources"))
+    ;; Create deps.edn file
+    (render (fs/path "resources" "deps.edn")
+            (fs/path namespace "deps.edn")
+            config)
+    ;; Create README file
+    (render (fs/path "resources" "README.md")
+            (fs/path namespace "README.md")
+            config)
+    ;; Create LICENSE file
+    (render (fs/path "resources" "LICENSE")
+            (fs/path namespace "LICENSE")
+            config)
+    ;; Create tests.edn file
+    (render (fs/path "resources" "tests.edn")
+            (fs/path namespace "tests.edn")
+            config)
+    ;; Create .zprint.edn file
+    (render (fs/path "resources" "zprint.edn")
+            (fs/path namespace ".zprint.edn")
+            config)
+    ;; Create .gitignore file (empty)
+    (fs/create-file (fs/path namespace ".gitignore"))
+    ;; Create .dir-locals.el file (for emacs)
+    (render (fs/path "resources" ".dir-locals.el")
+            (fs/path namespace ".dir-locals.el")
+            config)))
 
 (when (= *file* (System/getProperty "babashka.file")) (run *command-line-args*))
 
 (comment
-  (run ["dummy-project"])
+  (do
+    (def namespc (atom "dummy-project"))
+    (run [@namespc]))
 )
 
 (comment
@@ -165,7 +96,3 @@
   (fs/delete-tree @namespc)
 )
 
-(comment
-  (parser/render-file "resources/LICENSE"
-                      config)
-)
