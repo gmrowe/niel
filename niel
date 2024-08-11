@@ -1,13 +1,20 @@
 #!/usr/bin/env bb
 
 ;; TODO: use (moustache)[https://github.com/fhd/clostache] for templating
-(require '[babashka.fs :as fs] '[clojure.string :as str])
+(require '[babashka.fs :as fs]
+         '[clojure.string :as str]
+         '[selmer.parser :as parser])
 
 (def namespc (atom ""))
 (def root-path (atom ""))
 (def user-name "Garrett M Rowe")
 (def user-email "garrett.m.rowe@gmail.com")
 (def current-year (.getValue (java.time.Year/now)))
+
+(def config
+  {:year (.getValue (java.time.Year/now))
+   :user-name "Garrett M Rowe"
+   :user-email "garrett.m.rowez@gmail.com"})
 
 (defn readme-text
   []
@@ -92,36 +99,6 @@
    ""
    "clojure -M:test \"$@\""])
 
-(def zprint-rules-txt
-  ["{:comment {:inline-align-style :none}"
-   " :fn-map"
-   " {\"def\" [:arg1-body {:vector {:wrap-coll? false}}]"
-   "  \"defn\" [:arg1-body"
-   "          {:next-inner {:map"
-   "                        {:force-nl? true :key-order [:pre :post] :sort-in-code? false :sort? true}"
-   "                        :next-inner {:map {:force-nl? false}}}}]"
-   "  \"cond->\" [:arg1-pair-body {:pair {:indent 0 :nl-separator? true}}]"
-   "  \"cond\" [:pair-fn {:pair {:indent 0 :nl-separator? true} :pair-fn {:hang? false}}]"
-   "  \"try\" :flow-body"
-   "  \"as->\" [:arg2 {:fn-force-nl #{:arg2} :next-inner {:remove {:fn-force-nl #{:arg2}}}}]"
-   "  \"deftest\" :arg1-body"
-   "  \"testing\" [:arg1-body {:list {:respect-nl? true}}]"
-   "  \"extend\" :arg1-extend"
-   "  \"comment\" [:flow-body {:list {:respect-nl? true}}]"
-   "  \"extend-type\" [:arg1-extend"
-   "                 {:extend {:indent 0} :fn-map {:default :force-nl-body} :list {:indent-arg 2}}]"
-   "  \"defrecord\" [:arg2-extend {:list {:indent-arg 2} :next-inner {:list {:indent-arg 1}}}]"
-   "  \"defprotocol\" [:arg1-force-nl"
-   "                 {:fn-map {:default :flow}"
-   "                  :list {:constant-pair? false :indent-arg 2}"
-   "                  :next-inner {:list {:indent-arg 1}}"
-   "                  :style :defprotocolguide}]"
-   "  \"with-meta\" :flow-body}"
-   " :map {:comma? false :sort? false :force-nl true}"
-   " :vector {:respect-nl? true}"
-   " :style [:community :binding-nl]"
-   " :width 80}"])
-
 (def test-edn-txt ["#kaocha/v1 {}"])
 
 (def user-txt
@@ -136,28 +113,6 @@
 
 (def dir-locals-txt
   ["((clojure-mode . ((cider-clojure-cli-aliases . \":dev\"))))"])
-
-(def license-txt
-  [(format "Copyright %s %s <%s>" current-year user-name user-email)
-   ""
-   "Permission is hereby granted, free of charge, to any person obtaining"
-   "a copy of this software and associated documentation files (the"
-   "\"Software\"), to deal in the Software without restriction, including"
-   "without limitation the rights to use, copy, modify, merge, publish,"
-   "distribute, sublicense, and/or sell copies of the Software, and to"
-   "permit persons to whom the Software is furnished to do so, subject to"
-   "the following conditions:"
-   ""
-   "The above copyright notice and this permission notice shall be"
-   "included in all copies or substantial portions of the Software."
-   ""
-   "THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,"
-   "EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF"
-   "MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND"
-   "NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE"
-   "LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION"
-   "OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION"
-   "WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."])
 
 (defn run
   [args]
@@ -187,11 +142,13 @@
   ;; Create README file
   (fs/write-lines (fs/path @namespc "README.md") (readme-text))
   ;; Create LICENSE file
-  (fs/write-lines (fs/path @namespc "LICENSE") license-txt)
+  (fs/write-lines (fs/path @namespc "LICENSE")
+                  (str/split-lines (parser/render-file "LICENSE" config)))
   ;; Create tests.edn file
   (fs/write-lines (fs/path @namespc "tests.edn") test-edn-txt)
   ;; Create .zprint.edn file
-  (fs/write-lines (fs/path @namespc ".zprint.edn") zprint-rules-txt)
+  (fs/write-lines (fs/path @namespc ".zprint.edn")
+                  (str/split-lines (parser/render-file "zprint.edn" config)))
   ;; Create .gitignore file (empty)
   (fs/create-file (fs/path @namespc ".gitignore"))
   ;; Create .dir-locals.el file (for emacs)
@@ -206,4 +163,9 @@
 (comment
   "**Clean**"
   (fs/delete-tree @namespc)
+)
+
+(comment
+  (parser/render-file "resources/LICENSE"
+                      config)
 )
