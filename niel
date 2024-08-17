@@ -19,12 +19,19 @@
    :root-path (str/replace (first args) \- \_)})
 
 (defn render
-  [template-path output-path config]
-  (fs/write-lines output-path
-                  (-> template-path
-                      str
-                      (parser/render-file config)
-                      str/split-lines)))
+  [template-name out-path config]
+  (let [template-path (str/join fs/file-separator
+                                (concat (:template-dir config)
+                                        (str/split template-name
+                                                   (re-pattern
+                                                    fs/file-separator))))
+        output-path (apply fs/path (:namespace config) out-path)]
+    (fs/write-lines output-path
+                    ;; TODO: move this snippet to `template-lines` function
+                    (-> template-path
+                        (parser/render-file config)
+                        str/split-lines))))
+
 
 (defn run
   [args]
@@ -32,55 +39,35 @@
     (printf "Creating project: %s%n" namespace)
     ;; Init `src/` directory
     (fs/create-dirs (fs/path namespace "src" root-path))
-    (render (fs/path "resources" "main.clj")
-            (fs/path namespace "src" root-path "main.clj")
-            config)
+    (render "main.clj" ["src" root-path "main.clj"] config)
     ;; Init `test/` directory
     (fs/create-dirs (fs/path namespace "test" root-path))
-    (render (fs/path "resources" "main_test.clj")
-            (fs/path namespace "test" root-path "main_test.clj")
-            config)
+    (render "main_test.clj" ["test" root-path "main_test.clj"] config)
     ;; Init `dev/` directory
     (fs/create-dirs (fs/path namespace "dev"))
-    (render (fs/path "resources" "user.clj")
-            (fs/path namespace "dev" "user.clj")
-            config)
+    (render "user.clj" ["dev" "user.clj"] config)
     ;; Init `scripts/` directory with test runner script
     (fs/create-dirs (fs/path namespace "scripts"))
-    (render (fs/path "resources" "test")
-            (fs/path namespace "scripts" "test")
-            config)
+    (render "test" ["scripts" "test"] config)
     ;; Make script executable
     (fs/set-posix-file-permissions (fs/path namespace "scripts" "test")
                                    "rwxr-xr-x")
     ;; Init `resources/` directory (empty)
     (fs/create-dirs (fs/path namespace "resources"))
     ;; Create deps.edn file
-    (render (fs/path "resources" "deps.edn")
-            (fs/path namespace "deps.edn")
-            config)
+    (render "deps.edn" ["deps.edn"] config)
     ;; Create README file
-    (render (fs/path "resources" "README.md")
-            (fs/path namespace "README.md")
-            config)
+    (render "README.md" ["README.md"] config)
     ;; Create LICENSE file
-    (render (fs/path "resources" "LICENSE")
-            (fs/path namespace "LICENSE")
-            config)
+    (render "MIT_LICENSE" ["LICENSE"] config)
     ;; Create tests.edn file
-    (render (fs/path "resources" "tests.edn")
-            (fs/path namespace "tests.edn")
-            config)
+    (render "tests.edn" ["tests.edn"] config)
     ;; Create .zprint.edn file
-    (render (fs/path "resources" "zprint.edn")
-            (fs/path namespace ".zprint.edn")
-            config)
+    (render "zprint.edn" [".zprint.edn"] config)
     ;; Create .gitignore file (empty)
-    (fs/create-file (fs/path namespace ".gitignore"))
+    (render ".gitignore" [".gitignore"] config)
     ;; Create .dir-locals.el file (for emacs)
-    (render (fs/path "resources" ".dir-locals.el")
-            (fs/path namespace ".dir-locals.el")
-            config)))
+    (render ".dir-locals.el" [".dir-locals.el"] config)))
 
 (when (= *file* (System/getProperty "babashka.file")) (run *command-line-args*))
 
