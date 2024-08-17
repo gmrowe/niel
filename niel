@@ -29,17 +29,16 @@
 (defn run
   [args]
   (let [{:keys [namespace root-path] :as config} (gen-config args)]
-    (printf "Creating project: %s" namespace)
+    (printf "Creating project: %s%n" namespace)
     ;; Init `src/` directory
     (fs/create-dirs (fs/path namespace "src" root-path))
-    ;; Render main.clj
     (render (fs/path "resources" "main.clj")
-            (fs/path namespace "src" (:root-path config) "main.clj")
+            (fs/path namespace "src" root-path "main.clj")
             config)
     ;; Init `test/` directory
-    (fs/create-dirs (fs/path namespace "test" (:root-path config)))
+    (fs/create-dirs (fs/path namespace "test" root-path))
     (render (fs/path "resources" "main_test.clj")
-            (fs/path namespace "test" (:root-path config) "main_test.clj")
+            (fs/path namespace "test" root-path "main_test.clj")
             config)
     ;; Init `dev/` directory
     (fs/create-dirs (fs/path namespace "dev"))
