@@ -1,6 +1,5 @@
 #!/usr/bin/env bb
 
-;; TODO: use (moustache)[https://github.com/fhd/clostache] for templating
 (require '[babashka.fs :as fs]
          '[clojure.string :as str]
          '[selmer.parser :as parser])
@@ -13,61 +12,64 @@
   [args]
   {:year (.getValue (java.time.Year/now))
    :user-name "Garrett M Rowe"
-   :user-email "garrett.m.rowez@gmail.com"
+   :user-email "garrett.m.rowe@gmail.com"
    :template-dir ["resources"]
    :namespace (first args)
    :root-path (str/replace (first args) \- \_)})
 
+(defn template-path
+  [template-name template-dir]
+  (->> [template-name]
+       (concat template-dir)
+       (str/join fs/file-separator)))
+
+(defn template-lines
+  [template-name config]
+  (-> template-name
+      (template-path (:template-dir config))
+      (parser/render-file config)
+      str/split-lines))
+
 (defn render
   [template-name out-path config]
-  (let [template-path (str/join fs/file-separator
-                                (concat (:template-dir config)
-                                        (str/split template-name
-                                                   (re-pattern
-                                                    fs/file-separator))))
-        output-path (apply fs/path (:namespace config) out-path)]
-    (fs/write-lines output-path
-                    ;; TODO: move this snippet to `template-lines` function
-                    (-> template-path
-                        (parser/render-file config)
-                        str/split-lines))))
+  (let [output-path (apply fs/path (:namespace config) out-path)]
+    (fs/write-lines output-path (template-lines template-name config))))
 
+(defn schema
+  [root-path]
+  [["main.clj" ["src" root-path "main.clj"]]
+   ["main_test.clj" ["test" root-path "main_test.clj"]]
+   ["user.clj" ["dev" "user.clj"]]
+   ["test" ["scripts" "test"]]
+   ["deps.edn" ["deps.edn"]]
+   ["README.md" ["README.md"]]
+   ["MIT_LICENSE" ["LICENSE"]]
+   ["tests.edn" ["tests.edn"]]
+   ["zprint.edn" [".zprint.edn"]]
+   [".gitignore" [".gitignore"]]
+   [".dir-locals.el" [".dir-locals.el"]]
+   ; ["resources" []]
+  ])
 
 (defn run
   [args]
   (let [{:keys [namespace root-path] :as config} (gen-config args)]
     (printf "Creating project: %s%n" namespace)
-    ;; Init `src/` directory
+    ;; Create `src/` directory
     (fs/create-dirs (fs/path namespace "src" root-path))
-    (render "main.clj" ["src" root-path "main.clj"] config)
-    ;; Init `test/` directory
+    ;; Create `test/` directory
     (fs/create-dirs (fs/path namespace "test" root-path))
-    (render "main_test.clj" ["test" root-path "main_test.clj"] config)
-    ;; Init `dev/` directory
+    ;; Create `dev/` directory
     (fs/create-dirs (fs/path namespace "dev"))
-    (render "user.clj" ["dev" "user.clj"] config)
-    ;; Init `scripts/` directory with test runner script
+    ;; Create `scripts/` directory with test runner script
     (fs/create-dirs (fs/path namespace "scripts"))
-    (render "test" ["scripts" "test"] config)
+    ;; Create `resources/` directory (empty)
+    (fs/create-dirs (fs/path namespace "resources"))
+    (doseq [[template-name output-path] (schema (:root-path config))]
+      (render template-name output-path config))
     ;; Make script executable
     (fs/set-posix-file-permissions (fs/path namespace "scripts" "test")
-                                   "rwxr-xr-x")
-    ;; Init `resources/` directory (empty)
-    (fs/create-dirs (fs/path namespace "resources"))
-    ;; Create deps.edn file
-    (render "deps.edn" ["deps.edn"] config)
-    ;; Create README file
-    (render "README.md" ["README.md"] config)
-    ;; Create LICENSE file
-    (render "MIT_LICENSE" ["LICENSE"] config)
-    ;; Create tests.edn file
-    (render "tests.edn" ["tests.edn"] config)
-    ;; Create .zprint.edn file
-    (render "zprint.edn" [".zprint.edn"] config)
-    ;; Create .gitignore file (empty)
-    (render ".gitignore" [".gitignore"] config)
-    ;; Create .dir-locals.el file (for emacs)
-    (render ".dir-locals.el" [".dir-locals.el"] config)))
+                                   "rwxr-xr-x")))
 
 (when (= *file* (System/getProperty "babashka.file")) (run *command-line-args*))
 
