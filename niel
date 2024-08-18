@@ -30,46 +30,64 @@
       (parser/render-file config)
       str/split-lines))
 
+(defn create-dir
+  [{:keys [output-path]} {:keys [namespace]}]
+  (when output-path
+    (let [path (apply fs/path namespace output-path)]
+      (when-not (fs/exists? path) (fs/create-dirs path)))))
+
+(defn create-file
+  [{:keys [template-name output-path output-filename]} config]
+  (when (and template-name output-path output-filename)
+    (let [full-output-path
+          (apply fs/path
+                 (concat [(:namespace config)] output-path [output-filename]))]
+      (fs/write-lines full-output-path (template-lines template-name config)))))
+
+(defn set-permissions
+  [{:keys [output-path output-filename permissions]} {:keys [namespace]}]
+  (when permissions
+    (let [full-output-path
+          (apply fs/path (concat [namespace] output-path [output-filename]))]
+      (fs/set-posix-file-permissions full-output-path permissions))))
+
 (defn render
-  [template-name out-path config]
-  (let [output-path (apply fs/path (:namespace config) out-path)]
-    (fs/write-lines output-path (template-lines template-name config))))
+  [schema-element config]
+  (create-dir schema-element config)
+  (create-file schema-element config)
+  (set-permissions schema-element config))
 
 (defn schema
   [root-path]
-  [["main.clj" ["src" root-path "main.clj"]]
-   ["main_test.clj" ["test" root-path "main_test.clj"]]
-   ["user.clj" ["dev" "user.clj"]]
-   ["test" ["scripts" "test"]]
-   ["deps.edn" ["deps.edn"]]
-   ["README.md" ["README.md"]]
-   ["MIT_LICENSE" ["LICENSE"]]
-   ["tests.edn" ["tests.edn"]]
-   ["zprint.edn" [".zprint.edn"]]
-   [".gitignore" [".gitignore"]]
-   [".dir-locals.el" [".dir-locals.el"]]
-   ; ["resources" []]
-  ])
+  [{:template-name "main.clj"
+    :output-path ["src" root-path]
+    :output-filename "main.clj"}
+   {:template-name "main_test.clj"
+    :output-path ["test" root-path]
+    :output-filename "main_test.clj"}
+   {:template-name "user.clj" :output-path ["dev"] :output-filename "user.clj"}
+   {:template-name "test"
+    :output-path ["scripts"]
+    :output-filename "test"
+    :permissions "rwxr-xr-x"}
+   {:template-name "deps.edn" :output-path ["."] :output-filename "deps.edn"}
+   {:template-name "README.md" :output-path ["."] :output-filename "README.md"}
+   {:template-name "MIT_LICENSE" :output-path ["."] :output-filename "LICENSE"}
+   {:template-name "tests.edn" :output-path ["."] :output-filename "tests.edn"}
+   {:template-name "zprint.edn"
+    :output-path ["."]
+    :output-filename ".zprint.edn"}
+   {:template-name "gitignore" :output-path ["."] :output-filename ".gitignore"}
+   {:template-name "dir-locals.el"
+    :output-path ["."]
+    :output-filename ".dir-locals.el"}
+   {:output-path ["resources"]}])
 
 (defn run
   [args]
   (let [{:keys [namespace root-path] :as config} (gen-config args)]
     (printf "Creating project: %s%n" namespace)
-    ;; Create `src/` directory
-    (fs/create-dirs (fs/path namespace "src" root-path))
-    ;; Create `test/` directory
-    (fs/create-dirs (fs/path namespace "test" root-path))
-    ;; Create `dev/` directory
-    (fs/create-dirs (fs/path namespace "dev"))
-    ;; Create `scripts/` directory with test runner script
-    (fs/create-dirs (fs/path namespace "scripts"))
-    ;; Create `resources/` directory (empty)
-    (fs/create-dirs (fs/path namespace "resources"))
-    (doseq [[template-name output-path] (schema (:root-path config))]
-      (render template-name output-path config))
-    ;; Make script executable
-    (fs/set-posix-file-permissions (fs/path namespace "scripts" "test")
-                                   "rwxr-xr-x")))
+    (doseq [element (schema (:root-path config))] (render element config))))
 
 (when (= *file* (System/getProperty "babashka.file")) (run *command-line-args*))
 
